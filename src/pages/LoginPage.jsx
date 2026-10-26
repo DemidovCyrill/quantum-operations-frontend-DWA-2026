@@ -10,7 +10,6 @@ export default function LoginPage() {
 
   const handleLogin = (e) => {
     e.preventDefault()
-    // Mock authentication - always succeeds
     setError('')
     navigate('/')
   }
