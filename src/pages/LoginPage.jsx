@@ -30,8 +30,15 @@ export default function LoginPage() {
           setSuccess('Вход выполнен успешно! Добро пожаловать, ' + user.username + '.')
           setTimeout(() => navigate('/'), 1200)
         } else {
-          setLoading(false)
-          setError('Неверный логин или пароль. Попробуйте ещё раз.')
+          // Проверяем, есть ли пользователь с таким логином
+          const userExists = USERS_MOCK.find(u => u.username === username)
+          if (!userExists) {
+            setLoading(false)
+            setError('Нет пользователя с таким логином. Зарегистрируйтесь.')
+          } else {
+            setLoading(false)
+            setError('Неверный пароль. Попробуйте ещё раз.')
+          }
         }
       } else {
         const existing = USERS_MOCK.find(u => u.username === username || u.email === email)

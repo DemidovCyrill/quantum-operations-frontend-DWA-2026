@@ -9,6 +9,15 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-shell">
+        <div className="app-header">
+          <div className="logo-link">
+            <img src="/static/img/logo.png" className="logo" alt="Логотип" />
+            <span className="app-title-text">Квантовые гейты</span>
+          </div>
+          <NavLink to="/register" className="btn-register" style={{ textDecoration: 'none' }}>
+            <button className="btn-register-btn">Регистрация</button>
+          </NavLink>
+        </div>
         <div className="app-content">
           <Routes>
             <Route path="/" element={<GridPage />} />
