@@ -1,7 +1,6 @@
 import { Card } from 'react-bootstrap'
 
 const DEFAULT_IMAGE = '/static/img/pauli_x.png'
-const DEFAULT_VIDEO = '/static/video/video.mp4'
 
 export default function GateCard({ gate, onClick }) {
   return (

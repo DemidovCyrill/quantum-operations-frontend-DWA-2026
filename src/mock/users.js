@@ -1,7 +1,7 @@
 export const USERS_MOCK = [
   { id: 1, username: 'admin', email: 'admin@example.com', password: 'admin123' },
   { id: 2, username: 'user1', email: 'user1@example.com', password: 'user123' },
-];
+]
 
 export function findUser(username, password) {
   return USERS_MOCK.find(u => u.username === username && u.password === password);

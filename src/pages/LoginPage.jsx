@@ -30,7 +30,6 @@ export default function LoginPage() {
           setSuccess('Вход выполнен успешно! Добро пожаловать, ' + user.username + '.')
           setTimeout(() => navigate('/'), 1200)
         } else {
-          // Проверяем, есть ли пользователь с таким логином
           const userExists = USERS_MOCK.find(u => u.username === username)
           if (!userExists) {
             setLoading(false)
