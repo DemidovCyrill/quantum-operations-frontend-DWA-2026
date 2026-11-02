@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Form, Col } from 'react-bootstrap'
 import GateCard from '../components/GateCard'
 import { GATES_MOCK } from '../mock/gates'
+import { useNavigate } from 'react-router-dom'
 
 export default function GridPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -9,6 +10,7 @@ export default function GridPage() {
   const [angleXMax, setAngleXMax] = useState(180)
   const [angleYMin, setAngleYMin] = useState(0)
   const [angleYMax, setAngleYMax] = useState(180)
+  const navigate = useNavigate()
 
   const filteredGates = GATES_MOCK.filter((gate) => {
     const matchesSearch = gate.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -73,7 +75,7 @@ export default function GridPage() {
                   min="0"
                   max="180"
                   value={angleYMax}
-                  onChange={(e) => setAngleYMax(parseInt(e.target.value) || 180)}
+                  onChange={(e) => setAngleXMax(parseInt(e.target.value) || 180)}
                 />
               </div>
             </Col>
@@ -89,7 +91,7 @@ export default function GridPage() {
           <div className="empty-msg">Ничего не найдено. Измените фильтр.</div>
         ) : (
           filteredGates.map((gate) => (
-            <GateCard key={gate.id} gate={gate} />
+            <GateCard key={gate.id} gate={gate} onClick={() => navigate(`/feed/${gate.id}`)} />
           ))
         )}
       </div>

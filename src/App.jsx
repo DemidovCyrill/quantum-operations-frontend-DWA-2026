@@ -7,17 +7,21 @@ import Navbar from './components/Navbar'
 
 function App() {
   return (
-    <div className="app-shell">
-      <div className="app-content">
-        <Routes>
-          <Route path="/" element={<GridPage />} />
-          <Route path="/feed" element={<FeedPage />} />
-          <Route path="/add" element={<AddPage />} />
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
+    <BrowserRouter>
+      <div className="app-shell">
+        <div className="app-content">
+          <Routes>
+            <Route path="/" element={<GridPage />} />
+            <Route path="/feed" element={<FeedPage />} />
+            <Route path="/feed/:id" element={<FeedPage />} />
+            <Route path="/add" element={<AddPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<LoginPage />} />
+          </Routes>
+        </div>
+        <Navbar />
       </div>
-      <Navbar />
-    </div>
+    </BrowserRouter>
   )
 }
 

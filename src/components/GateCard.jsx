@@ -1,11 +1,14 @@
 import { Card } from 'react-bootstrap'
 
-const DEFAULT_IMAGE = '/DefaultImage.jpg'
-const DEFAULT_VIDEO = '/video.mp4'
+const DEFAULT_IMAGE = '/static/img/pauli_x.png'
+const DEFAULT_VIDEO = '/static/video/video.mp4'
 
-export default function GateCard({ gate }) {
+export default function GateCard({ gate, onClick }) {
   return (
-    <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea' }}>
+    <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea' }}
+          onClick={onClick}
+          style={{ cursor: 'pointer' }}
+    >
       <Card.Img
         className="cardImage"
         variant="top"

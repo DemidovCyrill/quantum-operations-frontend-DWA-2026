@@ -1,15 +1,11 @@
 import { useState } from 'react'
 import { Button } from 'react-bootstrap'
 import { GATES_MOCK } from '../mock/gates'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export default function FeedPage() {
-  const [currentIndex, setCurrentIndex] = useState(0)
-
-  const gate = GATES_MOCK[currentIndex]
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % GATES_MOCK.length)
-  }
+  const { id } = useParams()
+  const gate = GATES_MOCK.find((g) => String(g.id) === id) || GATES_MOCK[0]
 
   const likesCount = gate.likes_count || 0
 
@@ -28,7 +24,7 @@ export default function FeedPage() {
             muted
             playsInline
           >
-            <source src={gate.video_url || '/static/img/video.mp4'} type="video/mp4" />
+            <source src={gate.video_url || '/static/video/video.mp4'} type="video/mp4" />
           </video>
 
           <div className="vibes-side">
@@ -44,9 +40,6 @@ export default function FeedPage() {
               <span className="like-icon">♥</span>
               <span className="like-count">{likesCount}</span>
             </div>
-            <button className="next-btn" onClick={handleNext}>
-              ▶
-            </button>
           </div>
 
           <div className="vibes-bottom">
@@ -66,7 +59,7 @@ export default function FeedPage() {
       </div>
 
       <div className="feed-actions">
-        <Button variant="primary" className="w-100" onClick={handleNext}>
+        <Button variant="primary" className="w-100">
           Следующий гейт
         </Button>
       </div>
