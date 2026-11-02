@@ -5,9 +5,8 @@ const DEFAULT_VIDEO = '/static/video/video.mp4'
 
 export default function GateCard({ gate, onClick }) {
   return (
-    <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea' }}
+    <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea', cursor: 'pointer' }}
           onClick={onClick}
-          style={{ cursor: 'pointer' }}
     >
       <Card.Img
         className="cardImage"

@@ -377,6 +377,37 @@ textarea.field-input {
   text-decoration: underline;
 }
 
+/* ================= Кнопка лайка ================= */
+.like-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.like-btn:not(:disabled) {
+  background: #58BBBA;
+  color: #000;
+}
+
+.like-btn:not(:disabled):hover {
+  background: #3f9d9c;
+}
+
+.like-btn:disabled {
+  background: #333333;
+  color: #666666;
+  cursor: not-allowed;
+}
+
 /* ================= Логин ================= */
 .login-page {
   min-height: 100vh;
