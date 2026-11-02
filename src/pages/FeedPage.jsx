@@ -45,8 +45,9 @@ export default function FeedPage() {
       </div>
 
       <div className="feed-container">
-        <div className="vibes-container">
+        <div className="vibes-container" key={gate.id}>
           <video
+            key={gate.id}
             className="vibes-video"
             autoPlay
             loop

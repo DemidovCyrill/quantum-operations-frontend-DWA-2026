@@ -14,6 +14,9 @@ function App() {
             <img src="/static/img/logo.png" className="logo" alt="Логотип" />
             <span className="app-title-text">Квантовые гейты</span>
           </div>
+          <NavLink to="/login" className="btn-login" style={{ textDecoration: 'none', marginRight: '8px' }}>
+            <button className="btn-login-btn">Вход</button>
+          </NavLink>
           <NavLink to="/register" className="btn-register" style={{ textDecoration: 'none' }}>
             <button className="btn-register-btn">Регистрация</button>
           </NavLink>

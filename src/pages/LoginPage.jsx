@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button, Form, Alert } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { login as doLogin } from '../auth'
-import { findUser, registerUser } from '../mock/users'
+import { USERS_MOCK, findUser, registerUser } from '../mock/users'
 
 export default function LoginPage() {
   const [mode, setMode] = useState('login')

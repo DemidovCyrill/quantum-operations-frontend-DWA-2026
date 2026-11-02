@@ -40,8 +40,9 @@ body {
 }
 
 .logo {
-  height: 32px;
-  width: 32px;
+  height: 61px;
+  width: 305px;
+  object-fit: contain;
 }
 
 .app-title-text {
@@ -90,8 +91,9 @@ body {
 }
 
 .logo {
-  height: 32px;
-  width: 32px;
+  height: 61px;
+  width: 305px;
+  object-fit: contain;
 }
 
 /* ================= Плитка ================= */
@@ -516,5 +518,22 @@ textarea.field-input {
 }
 
 .btn-register-btn:hover {
+  background: #3f9d9c;
+}
+
+/* Кнопка Вход */
+.btn-login-btn {
+  background: #58BBBA;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.btn-login-btn:hover {
   background: #3f9d9c;
 }

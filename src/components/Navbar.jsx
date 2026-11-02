@@ -57,14 +57,6 @@ export default function Navbar() {
             <span style={{ fontSize: '20px', lineHeight: '1' }}>➕</span>
             Добавить
           </NavLink>
-          <NavLink
-            to="/login"
-            className={({ isActive }) => `tab ${isActive ? 'tab-active' : ''}`}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 0', border: 'none', background: 'none', color: '#888', fontSize: '12px', cursor: 'pointer', textDecoration: 'none' }}
-          >
-            <span style={{ fontSize: '20px', lineHeight: '1' }}>👤</span>
-            Вход
-          </NavLink>
         </>
       )}
     </nav>
