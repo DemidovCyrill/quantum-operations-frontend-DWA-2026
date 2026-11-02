@@ -26,10 +26,7 @@ export default function FeedPage() {
   }
 
   const handleLike = () => {
-    if (!isAuth) {
-      alert('Войдите в аккаунт, чтобы ставить лайки')
-      return
-    }
+    if (!isAuth) return
     setLikedGates((prev) => {
       const newLikes = prev.includes(gate.id)
         ? prev.filter((id) => id !== gate.id)
@@ -76,7 +73,7 @@ export default function FeedPage() {
               ▶
             </button>
             <button className="like-btn" onClick={handleLike} disabled={!isAuth}>
-              {isAuth ? (isLiked ? '♥ Убрать лайк' : '♡ Поставить лайк') : '♥ Войти для лайка'}
+              {isAuth ? (isLiked ? '♥ Убрать лайк' : '♡ Поставить лайк') : '♡ Лайк (войдите)'}
             </button>
           </div>
 
