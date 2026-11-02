@@ -46,10 +46,15 @@ export default function LoginPage() {
           setError('Пользователь с таким логином или email уже существует.')
         } else {
           const newUser = registerUser(username, email, password)
-          doLogin('fake-jwt-token', { id: newUser.id, username: newUser.username, email: newUser.email })
-          setLoading(false)
-          setSuccess('Регистрация прошла успешно! Добро пожаловать, ' + newUser.username + '.')
-          setTimeout(() => navigate('/'), 1200)
+          if (newUser) {
+            doLogin('fake-jwt-token', { id: newUser.id, username: newUser.username, email: newUser.email })
+            setLoading(false)
+            setSuccess('Регистрация прошла успешно! Добро пожаловать, ' + newUser.username + '.')
+            setTimeout(() => navigate('/'), 1200)
+          } else {
+            setLoading(false)
+            setError('Ошибка регистрации. Попробуйте ещё раз.')
+          }
         }
       }
     }, 800)

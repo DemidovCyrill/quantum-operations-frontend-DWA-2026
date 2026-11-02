@@ -3,6 +3,8 @@ import { Button, Form, Col } from 'react-bootstrap'
 import GateCard from '../components/GateCard'
 import { GATES_MOCK } from '../mock/gates'
 import { useNavigate } from 'react-router-dom'
+import { isAuthenticated, getCurrentUser } from '../auth'
+import { deleteGate } from '../mock/gates'
 
 export default function GridPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -10,7 +12,11 @@ export default function GridPage() {
   const [angleXMax, setAngleXMax] = useState(180)
   const [angleYMin, setAngleYMin] = useState(0)
   const [angleYMax, setAngleYMax] = useState(180)
+  const [deletedGateId, setDeletedGateId] = useState(null)
   const navigate = useNavigate()
+
+  const isAuth = isAuthenticated()
+  const currentUser = getCurrentUser()
 
   const filteredGates = GATES_MOCK.filter((gate) => {
     const matchesSearch = gate.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -18,6 +24,23 @@ export default function GridPage() {
     const matchesAngleY = gate.angle_y >= angleYMin && gate.angle_y <= angleYMax
     return matchesSearch && matchesAngleX && matchesAngleY
   })
+
+  const handleDelete = (gateId) => {
+    if (!isAuth) return
+    const gate = GATES_MOCK.find(g => g.id === gateId)
+    if (!gate) return
+    
+    const isOwner = gate.creator_id === currentUser.id
+    
+    if (isOwner) {
+      if (confirm('Удалить этот гейт?')) {
+        deleteGate(gateId)
+        setDeletedGateId(gateId)
+      }
+    } else {
+      alert('Вы не являетесь создателем этого гейта. У вас нет полномочий для удаления.')
+    }
+  }
 
   return (
     <div className="page-content">
@@ -91,7 +114,7 @@ export default function GridPage() {
           <div className="empty-msg">Ничего не найдено. Измените фильтр.</div>
         ) : (
           filteredGates.map((gate) => (
-            <GateCard key={gate.id} gate={gate} onClick={() => navigate(`/feed/${gate.id}`)} />
+            <GateCard key={gate.id} gate={gate} onClick={() => navigate(`/feed/${gate.id}`)} onDelete={handleDelete} />
           ))
         )}
       </div>

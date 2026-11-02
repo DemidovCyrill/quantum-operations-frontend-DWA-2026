@@ -3,6 +3,7 @@ import { Button } from 'react-bootstrap'
 import { GATES_MOCK } from '../mock/gates'
 import { useNavigate, useParams } from 'react-router-dom'
 import { isAuthenticated } from '../auth'
+import { updateGateLikes } from '../mock/gates'
 
 export default function FeedPage() {
   const { id } = useParams()
@@ -32,6 +33,7 @@ export default function FeedPage() {
         ? prev.filter((id) => id !== gate.id)
         : [...prev, gate.id]
       localStorage.setItem('quantum_liked_gates', JSON.stringify(newLikes))
+      updateGateLikes(gate.id, !isLiked)
       return newLikes
     })
   }
@@ -45,9 +47,8 @@ export default function FeedPage() {
       </div>
 
       <div className="feed-container">
-        <div className="vibes-container" key={gate.id}>
+        <div className="vibes-container">
           <video
-            key={gate.id}
             className="vibes-video"
             autoPlay
             loop

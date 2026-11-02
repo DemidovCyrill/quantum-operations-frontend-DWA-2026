@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Button, Form, Alert } from 'react-bootstrap'
 import { isAuthenticated } from '../auth'
+import { addGate } from '../mock/gates'
+import { getCurrentUser } from '../auth'
 
 export default function AddPage() {
   const [step, setStep] = useState(1)
@@ -13,6 +15,7 @@ export default function AddPage() {
   const [messageType, setMessageType] = useState('')
 
   const isAuth = isAuthenticated()
+  const currentUser = getCurrentUser()
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -24,10 +27,24 @@ export default function AddPage() {
 
     setTimeout(() => {
       setSubmitting(false)
+      const newGate = {
+        id: Date.now(),
+        title: title,
+        summary: summary,
+        status: 'published',
+        image_url: '/static/img/pauli_x.png',
+        video_url: '/static/video/video.mp4',
+        angle_x: angleX,
+        angle_y: angleY,
+        creator_id: currentUser.id,
+        likes_count: 0,
+        is_creator: true,
+      }
+      addGate(newGate)
       setMessage('Гейт "' + title + '" успешно опубликован!')
       setMessageType('success')
       setTimeout(() => {
-        window.location.href = '/feed'
+        window.location.href = '/feed/' + newGate.id
       }, 1200)
     }, 1000)
   }

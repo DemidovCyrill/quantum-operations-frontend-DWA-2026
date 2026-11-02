@@ -78,3 +78,32 @@ export const GATES_MOCK = [
     is_creator: false,
   },
 ]
+
+export function addGate(gate) {
+  GATES_MOCK.push(gate)
+  return gate
+}
+
+export function deleteGate(id) {
+  const index = GATES_MOCK.findIndex(g => g.id === id)
+  if (index !== -1) {
+    GATES_MOCK.splice(index, 1)
+    return true
+  }
+  return false
+}
+
+export function getGateById(id) {
+  return GATES_MOCK.find(g => g.id === id)
+}
+
+export function updateGateLikes(gateId, isLiked) {
+  const gate = GATES_MOCK.find(g => g.id === gateId)
+  if (gate) {
+    if (isLiked) {
+      gate.likes_count += 1
+    } else {
+      gate.likes_count = Math.max(0, gate.likes_count - 1)
+    }
+  }
+}

@@ -4,16 +4,17 @@ export const USERS_MOCK = [
 ]
 
 export function findUser(username, password) {
-  return USERS_MOCK.find(u => u.username === username && u.password === password);
+  return USERS_MOCK.find(u => u.username === username && u.password === password)
 }
 
 export function findUserByUsername(username) {
-  return USERS_MOCK.find(u => u.username === username);
+  return USERS_MOCK.find(u => u.username === username)
 }
 
 export function registerUser(username, email, password) {
-  if (findUserByUsername(username)) return null;
-  const newUser = { id: Date.now(), username, email, password };
-  USERS_MOCK.push(newUser);
-  return newUser;
+  if (findUserByUsername(username)) return null
+  if (USERS_MOCK.find(u => u.email === email)) return null
+  const newUser = { id: Date.now(), username, email, password }
+  USERS_MOCK.push(newUser)
+  return newUser
 }

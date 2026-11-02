@@ -1,8 +1,11 @@
 import { Card } from 'react-bootstrap'
 
 const DEFAULT_IMAGE = '/static/img/pauli_x.png'
+const DEFAULT_VIDEO = '/static/video/video.mp4'
 
-export default function GateCard({ gate, onClick }) {
+export default function GateCard({ gate, onClick, onDelete }) {
+  const isCreator = gate.creator_id === 1 // admin по умолчанию - создатель первого гейта
+
   return (
     <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea', cursor: 'pointer' }}
           onClick={onClick}
@@ -30,6 +33,26 @@ export default function GateCard({ gate, onClick }) {
           <span style={{ fontSize: '12px', color: '#58BBBA', fontWeight: '700' }}>Y: {gate.angle_y}°</span>
         </div>
       </Card.Body>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(gate.id) }}
+        className="delete-btn"
+        style={{ 
+          background: gate.creator_id === 1 ? '#e74c3c' : '#58BBBA',
+          color: gate.creator_id === 1 ? '#fff' : '#000',
+          border: 'none',
+          borderRadius: '6px',
+          padding: '6px 12px',
+          fontWeight: '700',
+          fontSize: '12px',
+          cursor: gate.creator_id === 1 ? 'pointer' : 'not-allowed',
+          width: '100%',
+          marginTop: '8px',
+          opacity: gate.creator_id !== 1 ? 0.5 : 1,
+        }}
+        disabled={gate.creator_id !== 1}
+      >
+        {gate.creator_id === 1 ? 'Удалить' : 'Не автор'}
+      </button>
     </Card>
   )
 }
