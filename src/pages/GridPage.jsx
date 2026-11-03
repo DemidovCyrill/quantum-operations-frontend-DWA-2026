@@ -12,7 +12,6 @@ export default function GridPage() {
   const [angleXMax, setAngleXMax] = useState(180)
   const [angleYMin, setAngleYMin] = useState(0)
   const [angleYMax, setAngleYMax] = useState(180)
-  const [deletedGateId, setDeletedGateId] = useState(null)
   const navigate = useNavigate()
 
   const isAuth = isAuthenticated()
@@ -35,7 +34,6 @@ export default function GridPage() {
     if (isOwner) {
       if (confirm('Удалить этот гейт?')) {
         deleteGate(gateId)
-        setDeletedGateId(gateId)
       }
     } else {
       alert('Вы не являетесь создателем этого гейта. У вас нет полномочий для удаления.')

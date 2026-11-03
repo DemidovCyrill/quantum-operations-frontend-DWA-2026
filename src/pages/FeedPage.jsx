@@ -33,7 +33,6 @@ export default function FeedPage() {
         ? prev.filter((id) => id !== gate.id)
         : [...prev, gate.id]
       localStorage.setItem('quantum_liked_gates', JSON.stringify(newLikes))
-      updateGateLikes(gate.id, !isLiked)
       return newLikes
     })
   }

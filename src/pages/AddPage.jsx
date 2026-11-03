@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Button, Form, Alert } from 'react-bootstrap'
-import { isAuthenticated } from '../auth'
+import { isAuthenticated, getCurrentUser } from '../auth'
 import { addGate } from '../mock/gates'
-import { getCurrentUser } from '../auth'
 
 export default function AddPage() {
   const [step, setStep] = useState(1)
