@@ -12,6 +12,37 @@ function clampAngle(value) {
   return Math.min(MAX_ANGLE, Math.max(0, Math.round(number)))
 }
 
+// Сжимаем фото перед сохранением в localStorage, чтобы не упереться в лимит ~5 МБ
+function fileToCompressedDataUrl(file, maxSize = 640, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      try {
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(image.width * scale))
+        canvas.height = Math.max(1, Math.round(image.height * scale))
+        const context = canvas.getContext('2d')
+        context.drawImage(image, 0, 0, canvas.width, canvas.height)
+        URL.revokeObjectURL(objectUrl)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl)
+        reject(error)
+      }
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('image-load-failed'))
+    }
+
+    image.src = objectUrl
+  })
+}
+
 export default function AddPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -51,7 +82,7 @@ export default function AddPage() {
     )
   }
 
-  const handleImageChange = (event) => {
+  const handleImageChange = async (event) => {
     const file = event.target.files?.[0]
     if (!file) {
       setImageUrl('')
@@ -60,11 +91,15 @@ export default function AddPage() {
     }
 
     setImageName(file.name)
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setImageUrl(reader.result)
+
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file)
+      setImageUrl(dataUrl)
+    } catch {
+      setImageUrl('')
+      setImageName('')
+      setError('Не удалось прочитать изображение. Попробуйте другой файл.')
     }
-    reader.readAsDataURL(file)
   }
 
   const handleVideoChange = (event) => {
