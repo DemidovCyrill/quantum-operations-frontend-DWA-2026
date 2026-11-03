@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Button, Form, Col } from 'react-bootstrap'
-import GateCard from '../components/GateCard'
-import { GATES_MOCK } from '../mock/gates'
+import { Button, Col, Form } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
-import { isAuthenticated, getCurrentUser } from '../auth'
-import { deleteGate } from '../mock/gates'
+import GateCard from '../components/GateCard'
+import { useAuth } from '../hooks/useAuth'
+import { useGates } from '../hooks/useGates'
+import { deleteGate } from '../store/gatesStore'
 
 export default function GridPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -12,31 +12,36 @@ export default function GridPage() {
   const [angleXMax, setAngleXMax] = useState(180)
   const [angleYMin, setAngleYMin] = useState(0)
   const [angleYMax, setAngleYMax] = useState(180)
+
   const navigate = useNavigate()
+  const gates = useGates()
+  const { user } = useAuth()
 
-  const isAuth = isAuthenticated()
-  const currentUser = getCurrentUser()
-
-  const filteredGates = GATES_MOCK.filter((gate) => {
-    const matchesSearch = gate.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredGates = gates.filter((gate) => {
+    const matchesSearch = gate.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
     const matchesAngleX = gate.angle_x >= angleXMin && gate.angle_x <= angleXMax
     const matchesAngleY = gate.angle_y >= angleYMin && gate.angle_y <= angleYMax
     return matchesSearch && matchesAngleX && matchesAngleY
   })
 
-  const handleDelete = (gateId) => {
-    if (!isAuth) return
-    const gate = GATES_MOCK.find(g => g.id === gateId)
-    if (!gate) return
-    
-    const isOwner = gate.creator_id === currentUser.id
-    
-    if (isOwner) {
-      if (confirm('Удалить этот гейт?')) {
-        deleteGate(gateId)
+  const handleDelete = (gate) => {
+    const isOwner = Boolean(user) && gate.creator_id === user.id
+
+    if (!isOwner) {
+      if (!user) {
+        window.alert(
+          `Вы не автор карточки «${gate.title}». Чтобы удалять гейты, войдите под аккаунтом автора (${gate.creator_name}).`,
+        )
+      } else {
+        window.alert(
+          `Вы не являетесь автором карточки «${gate.title}». Удалить её может только ${gate.creator_name}.`,
+        )
       }
-    } else {
-      alert('Вы не являетесь создателем этого гейта. У вас нет полномочий для удаления.')
+      return
+    }
+
+    if (window.confirm(`Удалить гейт «${gate.title}»? Действие нельзя отменить.`)) {
+      deleteGate(gate.id)
     }
   }
 
@@ -47,61 +52,62 @@ export default function GridPage() {
       </div>
 
       <div className="filter-section">
-        <Form>
+        <Form onSubmit={(event) => event.preventDefault()}>
           <Form.Group className="mb-3">
             <Form.Label>Поиск по названию</Form.Label>
             <Form.Control
               type="text"
               placeholder="Поиск по названию гейта…"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(event) => setSearchQuery(event.target.value)}
             />
           </Form.Group>
+
           <div className="row g-3">
-            <Col md={6}>
-              <Form.Label>Угол X:</Form.Label>
-              <div style={{ display: 'flex', gap: '6px' }}>
+            <Col xs={6}>
+              <Form.Label>Угол X</Form.Label>
+              <div className="angle-range">
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
                   value={angleXMin}
-                  onChange={(e) => setAngleXMin(parseInt(e.target.value) || 0)}
+                  onChange={(event) => setAngleXMin(Number(event.target.value) || 0)}
                 />
-                <span style={{ fontWeight: '600', color: '#58BBBA' }}>{angleXMin}°</span>
-                <span style={{ fontWeight: '600', color: '#58BBBA' }}>{angleXMax}°</span>
+                <span className="angle-range-sep">—</span>
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
                   value={angleXMax}
-                  onChange={(e) => setAngleXMax(parseInt(e.target.value) || 180)}
+                  onChange={(event) => setAngleXMax(Number(event.target.value) || 0)}
                 />
               </div>
             </Col>
-            <Col md={6}>
-              <Form.Label>Угол Y:</Form.Label>
-              <div style={{ display: 'flex', gap: '6px' }}>
+
+            <Col xs={6}>
+              <Form.Label>Угол Y</Form.Label>
+              <div className="angle-range">
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
                   value={angleYMin}
-                  onChange={(e) => setAngleYMin(parseInt(e.target.value) || 0)}
+                  onChange={(event) => setAngleYMin(Number(event.target.value) || 0)}
                 />
-                <span style={{ fontWeight: '600', color: '#58BBBA' }}>{angleYMin}°</span>
-                <span style={{ fontWeight: '600', color: '#58BBBA' }}>{angleYMax}°</span>
+                <span className="angle-range-sep">—</span>
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
                   value={angleYMax}
-                  onChange={(e) => setAngleXMax(parseInt(e.target.value) || 180)}
+                  onChange={(event) => setAngleYMax(Number(event.target.value) || 0)}
                 />
               </div>
             </Col>
           </div>
-          <Button variant="primary" className="mt-3 w-100">
+
+          <Button variant="primary" type="button" className="mt-3 w-100">
             Применить
           </Button>
         </Form>
@@ -109,10 +115,16 @@ export default function GridPage() {
 
       <div className="grid">
         {filteredGates.length === 0 ? (
-          <div className="empty-msg">Ничего не найдено. Измените фильтр.</div>
+          <div className="empty-msg">Ничего не найдено. Измените условия фильтра.</div>
         ) : (
           filteredGates.map((gate) => (
-            <GateCard key={gate.id} gate={gate} onClick={() => navigate(`/feed/${gate.id}`)} onDelete={handleDelete} />
+            <GateCard
+              key={gate.id}
+              gate={gate}
+              isOwner={Boolean(user) && gate.creator_id === user.id}
+              onOpen={() => navigate(`/feed/${gate.id}`)}
+              onDelete={handleDelete}
+            />
           ))
         )}
       </div>

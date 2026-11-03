@@ -1,11 +1,24 @@
 import { useState } from 'react'
-import { Button, Form, Alert } from 'react-bootstrap'
-import { useNavigate } from 'react-router-dom'
-import { login as doLogin } from '../auth'
-import { USERS_MOCK, findUser, registerUser } from '../mock/users'
+import { Alert, Button, Form } from 'react-bootstrap'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { login as saveSession } from '../auth'
+import { authenticate, registerUser } from '../mock/users'
+
+const ERROR_MESSAGES = {
+  'no-user': (name) => `Пользователя с логином «${name}» не существует. Нажмите «Зарегистрироваться».`,
+  'wrong-password': (name) => `Неверный пароль для пользователя «${name}». Попробуйте ещё раз.`,
+  'short-username': () => 'Логин должен содержать минимум 3 символа.',
+  'bad-email': () => 'Введите корректный email, например name@example.com.',
+  'short-password': () => 'Пароль должен содержать минимум 5 символов.',
+  'username-exists': () => 'Пользователь с таким логином уже зарегистрирован. Войдите в аккаунт.',
+  'email-exists': () => 'Пользователь с таким email уже зарегистрирован. Войдите в аккаунт.',
+}
 
 export default function LoginPage() {
-  const [mode, setMode] = useState('login')
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const [mode, setMode] = useState(location.pathname === '/register' ? 'register' : 'login')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,58 +26,66 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const isLogin = mode === 'login'
+
+  const switchMode = (nextMode) => {
+    setMode(nextMode)
+    setError('')
+    setSuccess('')
+    setPassword('')
+    setShowPassword(false)
+  }
+
+  const finishAuth = (user, message) => {
+    saveSession(user)
+    setLoading(false)
+    setSuccess(message)
+    window.setTimeout(() => navigate('/'), 700)
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
     setError('')
     setSuccess('')
     setLoading(true)
 
-    setTimeout(() => {
-      if (mode === 'login') {
-        const user = findUser(username, password)
-        if (user) {
-          doLogin('fake-jwt-token', { id: user.id, username: user.username, email: user.email })
-          setLoading(false)
-          setSuccess('Вход выполнен успешно! Добро пожаловать, ' + user.username + '.')
-          setTimeout(() => navigate('/'), 1200)
-        } else {
-          const userExists = USERS_MOCK.find(u => u.username === username)
-          if (!userExists) {
-            setLoading(false)
-            setError('Нет пользователя с таким логином. Зарегистрируйтесь.')
-          } else {
-            setLoading(false)
-            setError('Неверный пароль. Попробуйте ещё раз.')
-          }
-        }
-      } else {
-        const existing = USERS_MOCK.find(u => u.username === username || u.email === email)
-        if (existing) {
-          setLoading(false)
-          setError('Пользователь с таким логином или email уже существует.')
-        } else {
-          const newUser = registerUser(username, email, password)
-          if (newUser) {
-            doLogin('fake-jwt-token', { id: newUser.id, username: newUser.username, email: newUser.email })
-            setLoading(false)
-            setSuccess('Регистрация прошла успешно! Добро пожаловать, ' + newUser.username + '.')
-            setTimeout(() => navigate('/'), 1200)
-          } else {
-            setLoading(false)
-            setError('Ошибка регистрации. Попробуйте ещё раз.')
-          }
-        }
+    if (isLogin) {
+      const result = authenticate(username, password)
+
+      if (!result.ok) {
+        setLoading(false)
+        const builder = ERROR_MESSAGES[result.reason]
+        setError(builder ? builder(username.trim()) : 'Не удалось войти. Проверьте данные.')
+        return
       }
-    }, 800)
+
+      finishAuth(result.user, `Вход выполнен. Добро пожаловать, ${result.user.username}!`)
+      return
+    }
+
+    const result = registerUser({ username, email, password })
+
+    if (!result.ok) {
+      setLoading(false)
+      const builder = ERROR_MESSAGES[result.reason]
+      setError(builder ? builder() : 'Не удалось зарегистрироваться. Проверьте данные.')
+      return
+    }
+
+    finishAuth(result.user, `Регистрация прошла успешно. Добро пожаловать, ${result.user.username}!`)
   }
 
   return (
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1 className="app-title">{mode === 'login' ? 'Вход' : 'Регистрация'}</h1>
+          <h1 className="app-title login-title">{isLogin ? 'Вход' : 'Регистрация'}</h1>
+          <p className="login-subtitle">
+            {isLogin
+              ? 'Войдите, чтобы добавлять гейты, ставить лайки и удалять свои карточки.'
+              : 'Создайте аккаунт — он сохранится и будет доступен после перезагрузки страницы.'}
+          </p>
         </div>
 
         <Form onSubmit={handleSubmit} className="login-form">
@@ -72,21 +93,21 @@ export default function LoginPage() {
             <Form.Label>Логин</Form.Label>
             <Form.Control
               type="text"
-              id="username"
+              autoComplete="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(event) => setUsername(event.target.value)}
               required
             />
           </Form.Group>
 
-          {mode === 'register' && (
+          {!isLogin && (
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
               <Form.Control
                 type="email"
-                id="reg_email"
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
               />
             </Form.Group>
@@ -97,15 +118,15 @@ export default function LoginPage() {
             <div className="password-input">
               <Form.Control
                 type={showPassword ? 'text' : 'password'}
-                id="password"
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
               <button
                 type="button"
                 className="toggle-password"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowPassword((value) => !value)}
               >
                 {showPassword ? 'Скрыть' : 'Показать'}
               </button>
@@ -113,24 +134,29 @@ export default function LoginPage() {
           </Form.Group>
 
           <Button variant="primary" type="submit" className="w-100" disabled={loading}>
-            {loading ? 'Загрузка...' : (mode === 'login' ? 'Войти' : 'Зарегистрироваться')}
+            {loading ? 'Подождите…' : isLogin ? 'Войти' : 'Зарегистрироваться'}
           </Button>
         </Form>
 
-        {error && <Alert variant="danger">{error}</Alert>}
-        {success && <Alert variant="success">{success}</Alert>}
+        {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
+        {success && <Alert variant="success" className="mt-3 mb-0">{success}</Alert>}
 
         <div className="login-divider">
-          <span>{mode === 'login' ? 'Ещё нет аккаунта?' : 'Уже есть аккаунт?'}</span>
+          <span>{isLogin ? 'Ещё нет аккаунта?' : 'Уже есть аккаунт?'}</span>
         </div>
 
-        <button
+        <Button
+          variant="outline-primary"
           type="button"
-          className="btn btn-outline-primary w-100 mt-2"
-          onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+          className="w-100"
+          onClick={() => switchMode(isLogin ? 'register' : 'login')}
         >
-          {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
-        </button>
+          {isLogin ? 'Зарегистрироваться' : 'Войти'}
+        </Button>
+
+        <div className="login-hint">
+          Демо-аккаунты: <b>admin / admin123</b>, <b>user1 / user123</b>
+        </div>
       </div>
     </div>
   )

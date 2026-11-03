@@ -1,43 +1,83 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from 'react-bootstrap'
-import { GATES_MOCK } from '../mock/gates'
 import { useNavigate, useParams } from 'react-router-dom'
-import { isAuthenticated } from '../auth'
-import { updateGateLikes } from '../mock/gates'
+import { useAuth } from '../hooks/useAuth'
+import { useGates } from '../hooks/useGates'
+import { DEFAULT_VIDEO, isLikedBy, toggleLike } from '../store/gatesStore'
 
 export default function FeedPage() {
   const { id } = useParams()
-  const [currentGateId, setCurrentGateId] = useState(id ? parseInt(id) : GATES_MOCK[0].id)
+  const navigate = useNavigate()
+  const gates = useGates()
+  const { user } = useAuth()
+  const videoRef = useRef(null)
 
-  const gate = GATES_MOCK.find((g) => g.id === currentGateId) || GATES_MOCK[0]
+  const [currentId, setCurrentId] = useState(() => (id ? Number(id) : gates[0]?.id ?? null))
 
-  const [likedGates, setLikedGates] = useState(() => {
-    const saved = localStorage.getItem('quantum_liked_gates')
-    return saved ? JSON.parse(saved) : []
-  })
+  // Переход из плитки по конкретной карточке
+  useEffect(() => {
+    if (id) setCurrentId(Number(id))
+  }, [id])
 
-  const isAuth = isAuthenticated()
+  const index = gates.findIndex((gate) => gate.id === currentId)
+  const gate = index >= 0 ? gates[index] : gates[0]
 
-  const isLiked = likedGates.includes(gate.id)
+  // Держим адрес страницы в соответствии с открытым гейтом
+  useEffect(() => {
+    if (!gate) return
+    if (id !== String(gate.id)) {
+      navigate(`/feed/${gate.id}`, { replace: true })
+    }
+  }, [gate, id, navigate])
+
+  // Принудительно запускаем видео после смены гейта (некоторые браузеры
+  // игнорируют autoPlay у пересозданного элемента)
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const promise = video.play()
+    if (promise && typeof promise.catch === 'function') {
+      promise.catch(() => {})
+    }
+  }, [gate?.id])
+
+  if (!gate) {
+    return (
+      <div className="feed-page">
+        <div className="empty-msg">
+          <p>Гейтов пока нет.</p>
+          <Button variant="primary" onClick={() => navigate('/add')}>
+            Добавить гейт
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const liked = isLikedBy(gate, user?.id)
 
   const handleNext = () => {
-    const currentIndex = GATES_MOCK.findIndex((g) => g.id === currentGateId)
-    const nextIndex = (currentIndex + 1) % GATES_MOCK.length
-    setCurrentGateId(GATES_MOCK[nextIndex].id)
+    if (gates.length < 2) return
+    const nextIndex = (index + 1) % gates.length
+    setCurrentId(gates[nextIndex].id)
   }
 
   const handleLike = () => {
-    if (!isAuth) return
-    setLikedGates((prev) => {
-      const newLikes = prev.includes(gate.id)
-        ? prev.filter((id) => id !== gate.id)
-        : [...prev, gate.id]
-      localStorage.setItem('quantum_liked_gates', JSON.stringify(newLikes))
-      return newLikes
-    })
+    if (!user) {
+      window.alert('Войдите или зарегистрируйтесь, чтобы ставить лайки.')
+      return
+    }
+    toggleLike(gate.id, user.id)
   }
 
-  const likesCount = gate.likes_count || 0
+  const handleVideoError = (event) => {
+    const video = event.currentTarget
+    if (video.dataset.fallbackApplied === '1') return
+    video.dataset.fallbackApplied = '1'
+    video.src = DEFAULT_VIDEO
+    video.load()
+    video.play().catch(() => {})
+  }
 
   return (
     <div className="feed-page">
@@ -47,15 +87,23 @@ export default function FeedPage() {
 
       <div className="feed-container">
         <div className="vibes-container">
+          {/*
+            key={gate.id} — критично: при смене гейта React создаёт новый <video>,
+            поэтому браузер гарантированно загружает новый файл, а не оставляет старый кадр.
+            src задаётся прямо на <video>, без <source> — иначе смена source не перезапускает видео.
+          */}
           <video
+            key={gate.id}
+            ref={videoRef}
             className="vibes-video"
+            src={gate.video_url || DEFAULT_VIDEO}
             autoPlay
             loop
             muted
             playsInline
-          >
-            <source src={gate.video_url || '/static/video/video.mp4'} type="video/mp4" />
-          </video>
+            preload="auto"
+            onError={handleVideoError}
+          />
 
           <div className="vibes-side">
             <div className="param-badge">
@@ -66,30 +114,32 @@ export default function FeedPage() {
               <span className="param-label">Y</span>
               <span className="param-value">{gate.angle_y}°</span>
             </div>
-            <div className="like-badge">
-              <span className="like-icon">{isLiked ? '♥' : '♡'}</span>
-              <span className="like-count">{likesCount}</span>
-            </div>
-            <button className="next-btn" onClick={handleNext}>
-              ▶
+
+            <button
+              type="button"
+              className={`like-btn ${liked ? 'is-liked' : ''}`}
+              onClick={handleLike}
+              title={user ? (liked ? 'Убрать лайк' : 'Поставить лайк') : 'Войдите, чтобы поставить лайк'}
+              aria-pressed={liked}
+            >
+              <span className="like-btn-icon">{liked ? '♥' : '♡'}</span>
+              <span className="like-btn-count">{gate.likes_count}</span>
             </button>
-            <button className="like-btn" onClick={handleLike} disabled={!isAuth}>
-              {isAuth ? (isLiked ? '♥ Убрать лайк' : '♡ Поставить лайк') : '♡ Лайк (войдите)'}
+
+            <button type="button" className="next-btn" onClick={handleNext} title="Следующий гейт">
+              ▶
             </button>
           </div>
 
           <div className="vibes-bottom">
-            <input
-              type="checkbox"
-              id={`expand-${gate.id}`}
-              className="expand-toggle"
-            />
+            <input type="checkbox" id={`expand-${gate.id}`} className="expand-toggle" />
             <label htmlFor={`expand-${gate.id}`} className="description-block">
               <strong>{gate.title}</strong>
-              <p className="description-text">{gate.summary || ''}</p>
+              <p className="description-text">{gate.summary || 'Без описания'}</p>
               <span className="more-link">Ещё</span>
               <span className="less-link">Меньше</span>
             </label>
+            <div className="feed-author">Автор: {gate.creator_name}</div>
           </div>
         </div>
       </div>

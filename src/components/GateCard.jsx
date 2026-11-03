@@ -1,58 +1,59 @@
 import { Card } from 'react-bootstrap'
+import { DEFAULT_IMAGE } from '../store/gatesStore'
 
-const DEFAULT_IMAGE = '/static/img/pauli_x.png'
-const DEFAULT_VIDEO = '/static/video/video.mp4'
-
-export default function GateCard({ gate, onClick, onDelete }) {
-  const isCreator = gate.creator_id === 1 // admin по умолчанию - создатель первого гейта
+export default function GateCard({ gate, isOwner, onOpen, onDelete }) {
+  const handleImageError = (event) => {
+    const image = event.currentTarget
+    if (image.dataset.fallbackApplied === '1') return
+    image.dataset.fallbackApplied = '1'
+    image.src = DEFAULT_IMAGE
+  }
 
   return (
-    <Card className="card" style={{ width: '180px', margin: '8px', background: '#000000', color: '#eaeaea', cursor: 'pointer' }}
-          onClick={onClick}
+    <Card className="card gate-card" onClick={onOpen} role="button" tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
     >
-      <Card.Img
+      <img
         className="cardImage"
-        variant="top"
         src={gate.image_url || DEFAULT_IMAGE}
-        height="130px"
-        width="100%"
-        style={{ objectFit: 'cover', background: '#111' }}
+        alt={gate.title}
+        onError={handleImageError}
       />
-      <Card.Body style={{ padding: '12px' }}>
-        <Card.Title style={{ color: '#ffffff', fontWeight: '700', fontSize: '15px', margin: '0' }}>
-          {gate.title}
-        </Card.Title>
-        <Card.Text
-          className="card-desc"
-          style={{ color: '#ffffff', fontWeight: '600', fontSize: '13px', margin: '0', lineHeight: '1.3', display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-        >
+
+      <Card.Body className="card-body">
+        <Card.Title className="card-title">{gate.title}</Card.Title>
+
+        <div className="card-author">
+          <span className="card-author-label">Автор:</span> {gate.creator_name}
+        </div>
+
+        <Card.Text className="card-desc">
           {gate.summary || 'Без описания'}
         </Card.Text>
-        <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
-          <span style={{ fontSize: '12px', color: '#58BBBA', fontWeight: '700' }}>X: {gate.angle_x}°</span>
-          <span style={{ fontSize: '12px', color: '#58BBBA', fontWeight: '700' }}>Y: {gate.angle_y}°</span>
+
+        <div className="card-meta">
+          <span className="card-angle">X: {gate.angle_x}°</span>
+          <span className="card-angle">Y: {gate.angle_y}°</span>
+          <span className="card-likes">♥ {gate.likes_count}</span>
         </div>
+
+        <button
+          type="button"
+          className={`delete-btn ${isOwner ? 'delete-btn-owner' : 'delete-btn-guest'}`}
+          title={isOwner ? 'Удалить этот гейт' : 'Удалять гейт может только его автор'}
+          onClick={(event) => {
+            event.stopPropagation()
+            onDelete(gate)
+          }}
+        >
+          Удалить
+        </button>
       </Card.Body>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(gate.id) }}
-        className="delete-btn"
-        style={{ 
-          background: gate.creator_id === 1 ? '#e74c3c' : '#58BBBA',
-          color: gate.creator_id === 1 ? '#fff' : '#000',
-          border: 'none',
-          borderRadius: '6px',
-          padding: '6px 12px',
-          fontWeight: '700',
-          fontSize: '12px',
-          cursor: gate.creator_id === 1 ? 'pointer' : 'not-allowed',
-          width: '100%',
-          marginTop: '8px',
-          opacity: gate.creator_id !== 1 ? 0.5 : 1,
-        }}
-        disabled={gate.creator_id !== 1}
-      >
-        {gate.creator_id === 1 ? 'Удалить' : 'Не автор'}
-      </button>
     </Card>
   )
 }
