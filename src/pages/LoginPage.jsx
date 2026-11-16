@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import { Alert, Button, Form } from 'react-bootstrap'
+import { useDispatch } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { login as saveSession } from '../auth'
+
+import { extractUser, loginRequest, registerRequest } from '../api/authApi'
+import { describeApiError, isNetworkError } from '../api/http'
 import { authenticate, registerUser } from '../mock/users'
+import { setCredentials } from '../store/slices/authSlice'
+import { resetFilters } from '../store/slices/filtersSlice'
+import { resetGates } from '../store/slices/gatesSlice'
+import { setNotice, stopLoading, startLoading } from '../store/slices/uiSlice'
 
 const ERROR_MESSAGES = {
   'no-user': (name) => `Пользователя с логином «${name}» не существует. Нажмите «Зарегистрироваться».`,
@@ -17,6 +24,7 @@ const ERROR_MESSAGES = {
 export default function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const [mode, setMode] = useState(location.pathname === '/register' ? 'register' : 'login')
   const [username, setUsername] = useState('')
@@ -35,45 +43,93 @@ export default function LoginPage() {
     setSuccess('')
     setPassword('')
     setShowPassword(false)
+    navigate(nextMode === 'register' ? '/register' : '/login', { replace: true })
   }
 
-  const finishAuth = (user, message) => {
-    saveSession(user)
-    setLoading(false)
+  const finishAuth = (user, source, message) => {
+    dispatch(setCredentials({ user, source }))
+    dispatch(resetFilters())
+    dispatch(resetGates())
     setSuccess(message)
-    window.setTimeout(() => navigate('/'), 700)
+    window.setTimeout(() => navigate('/'), 600)
   }
 
-  const handleSubmit = (event) => {
+  const loginWithMock = (message) => {
+    const result = authenticate(username, password)
+    if (!result.ok) {
+      const builder = ERROR_MESSAGES[result.reason]
+      setError(builder ? builder(username.trim()) : 'Не удалось войти. Проверьте данные.')
+      return
+    }
+    finishAuth(
+      { id: Number(result.user.id), username: result.user.username, email: result.user.email || '' },
+      'mock',
+      `${message} Вход выполнен в демо-режиме (без бэкенда).`,
+    )
+  }
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
     setSuccess('')
     setLoading(true)
+    dispatch(startLoading(isLogin ? 'Выполняем вход…' : 'Регистрируем…'))
 
-    if (isLogin) {
-      const result = authenticate(username, password)
+    const describeAuthError = (requestError) => {
+      if (requestError?.response?.status === 401) return 'Неверный логин или пароль.'
+      if (requestError?.response?.status === 400) {
+        return 'Пользователь с таким логином или email уже существует. Войдите в аккаунт.'
+      }
+      return describeApiError(requestError)
+    }
 
-      if (!result.ok) {
-        setLoading(false)
-        const builder = ERROR_MESSAGES[result.reason]
-        setError(builder ? builder(username.trim()) : 'Не удалось войти. Проверьте данные.')
+    try {
+      if (isLogin) {
+        try {
+          const response = await loginRequest({ username, password })
+          const user = extractUser(response, username) || { id: null, username, email: '' }
+          finishAuth(user, 'api', `Вход выполнен. Добро пожаловать, ${user.username}!`)
+        } catch (requestError) {
+          if (isNetworkError(requestError)) {
+            loginWithMock('Веб-сервис недоступен.')
+          } else {
+            setError(describeAuthError(requestError))
+          }
+        }
         return
       }
 
-      finishAuth(result.user, `Вход выполнен. Добро пожаловать, ${result.user.username}!`)
-      return
-    }
-
-    const result = registerUser({ username, email, password })
-
-    if (!result.ok) {
+      try {
+        await registerRequest({ username, email, password })
+        const response = await loginRequest({ username, password })
+        const user = extractUser(response, username) || { id: null, username, email }
+        finishAuth(user, 'api', `Регистрация прошла успешно. Добро пожаловать, ${user.username}!`)
+      } catch (requestError) {
+        if (isNetworkError(requestError)) {
+          const result = registerUser({ username, email, password })
+          if (!result.ok) {
+            const builder = ERROR_MESSAGES[result.reason]
+            setError(builder ? builder() : 'Не удалось зарегистрироваться. Проверьте данные.')
+          } else {
+            finishAuth(
+              { id: Number(result.user.id), username: result.user.username, email: result.user.email },
+              'mock',
+              'Регистрация прошла в демо-режиме (без бэкенда). Добро пожаловать!',
+            )
+          }
+        } else {
+          setError(describeAuthError(requestError))
+        }
+      }
+    } finally {
       setLoading(false)
-      const builder = ERROR_MESSAGES[result.reason]
-      setError(builder ? builder() : 'Не удалось зарегистрироваться. Проверьте данные.')
-      return
+      dispatch(stopLoading())
     }
+  }
 
-    finishAuth(result.user, `Регистрация прошла успешно. Добро пожаловать, ${result.user.username}!`)
+  const handleLoginAsGuest = () => {
+    dispatch(setNotice({ type: 'info', text: 'Вы в режиме гостя. Доступен просмотр и демо-данные.' }))
+    navigate('/')
   }
 
   return (
@@ -83,8 +139,8 @@ export default function LoginPage() {
           <h1 className="app-title login-title">{isLogin ? 'Вход' : 'Регистрация'}</h1>
           <p className="login-subtitle">
             {isLogin
-              ? 'Войдите, чтобы добавлять гейты, ставить лайки и удалять свои карточки.'
-              : 'Создайте аккаунт — он сохранится и будет доступен после перезагрузки страницы.'}
+              ? 'Войдите, чтобы добавлять услуги, ставить лайки и удалять свои карточки.'
+              : 'Создайте аккаунт — данные сохранятся на сервере и будут доступны после входа.'}
           </p>
         </div>
 
@@ -123,11 +179,7 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
-              <button
-                type="button"
-                className="toggle-password"
-                onClick={() => setShowPassword((value) => !value)}
-              >
+              <button type="button" className="toggle-password" onClick={() => setShowPassword((value) => !value)}>
                 {showPassword ? 'Скрыть' : 'Показать'}
               </button>
             </div>
@@ -145,17 +197,16 @@ export default function LoginPage() {
           <span>{isLogin ? 'Ещё нет аккаунта?' : 'Уже есть аккаунт?'}</span>
         </div>
 
-        <Button
-          variant="outline-primary"
-          type="button"
-          className="w-100"
-          onClick={() => switchMode(isLogin ? 'register' : 'login')}
-        >
+        <Button variant="outline-primary" type="button" className="w-100" onClick={() => switchMode(isLogin ? 'register' : 'login')}>
           {isLogin ? 'Зарегистрироваться' : 'Войти'}
         </Button>
 
+        <Button variant="link" type="button" className="w-100 mt-2 guest-link" onClick={handleLoginAsGuest}>
+          Продолжить как гость
+        </Button>
+
         <div className="login-hint">
-          Демо-аккаунты: <b>admin / admin123</b>, <b>user1 / user123</b>
+          Демо-аккаунты (для работы без бэкенда): <b>admin / admin123</b>, <b>user1 / user123</b>
         </div>
       </div>
     </div>

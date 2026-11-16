@@ -1,65 +1,117 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Col, Form } from 'react-bootstrap'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
+
 import GateCard from '../components/GateCard'
-import { useAuth } from '../hooks/useAuth'
-import { useGates } from '../hooks/useGates'
-import { deleteGate } from '../store/gatesStore'
+import { selectIsAuth, selectUser } from '../store/slices/authSlice'
+import {
+  DEFAULT_FILTERS,
+  resetFilters,
+  selectFilters,
+  setFilters,
+} from '../store/slices/filtersSlice'
+import { selectGates, selectGatesSource, selectGatesStatus } from '../store/slices/gatesSlice'
+import { selectIsLoading } from '../store/slices/uiSlice'
+import { deleteGateById, fetchGates, likeGateById } from '../store/thunks/gatesThunks'
 
 export default function GridPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [angleXMin, setAngleXMin] = useState(0)
-  const [angleXMax, setAngleXMax] = useState(180)
-  const [angleYMin, setAngleYMin] = useState(0)
-  const [angleYMax, setAngleYMax] = useState(180)
-
+  const dispatch = useDispatch()
   const navigate = useNavigate()
-  const gates = useGates()
-  const { user } = useAuth()
 
-  const filteredGates = gates.filter((gate) => {
-    const matchesSearch = gate.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
-    const matchesAngleX = gate.angle_x >= angleXMin && gate.angle_x <= angleXMax
-    const matchesAngleY = gate.angle_y >= angleYMin && gate.angle_y <= angleYMax
-    return matchesSearch && matchesAngleX && matchesAngleY
-  })
+  const gates = useSelector(selectGates)
+  const filters = useSelector(selectFilters)
+  const status = useSelector(selectGatesStatus)
+  const source = useSelector(selectGatesSource)
+  const loading = useSelector(selectIsLoading)
+  const user = useSelector(selectUser)
+  const isAuth = useSelector(selectIsAuth)
+
+  const isOwnerOf = (gate) => Boolean(user) && Number(gate.creator_id) === Number(user.id)
+
+  const [form, setForm] = useState({ ...DEFAULT_FILTERS, ...filters })
+
+  useEffect(() => {
+    if (status === 'idle') dispatch(fetchGates())
+  }, [dispatch, status])
+
+  useEffect(() => {
+    setForm({ ...DEFAULT_FILTERS, ...filters })
+  }, [filters])
+
+  const updateField = (name, value) => setForm((prev) => ({ ...prev, [name]: value }))
+
+  const applyFilters = () => {
+    dispatch(
+      setFilters({
+        q: form.q.trim(),
+        angleXMin: Number(form.angleXMin) || 0,
+        angleXMax: Number(form.angleXMax) || 0,
+        angleYMin: Number(form.angleYMin) || 0,
+        angleYMax: Number(form.angleYMax) || 0,
+        sortBy: form.sortBy,
+        sortOrder: form.sortOrder,
+      }),
+    )
+    dispatch(fetchGates())
+  }
+
+  const resetAll = () => {
+    dispatch(resetFilters())
+    dispatch(fetchGates())
+  }
 
   const handleDelete = (gate) => {
-    const isOwner = Boolean(user) && gate.creator_id === user.id
-
-    if (!isOwner) {
-      if (!user) {
+    if (!isOwnerOf(gate)) {
+      if (!isAuth) {
         window.alert(
-          `Вы не автор карточки «${gate.title}». Чтобы удалять гейты, войдите под аккаунтом автора (${gate.creator_name}).`,
+          `Вы не автор услуги «${gate.title}». Чтобы удалять услуги, войдите под аккаунтом автора (${gate.creator_name}).`,
         )
       } else {
-        window.alert(
-          `Вы не являетесь автором карточки «${gate.title}». Удалить её может только ${gate.creator_name}.`,
-        )
+        window.alert(`Вы не являетесь автором услуги «${gate.title}». Удалить её может только ${gate.creator_name}.`)
       }
       return
     }
 
-    if (window.confirm(`Удалить гейт «${gate.title}»? Действие нельзя отменить.`)) {
-      deleteGate(gate.id)
+    if (window.confirm(`Удалить услугу «${gate.title}»? Действие нельзя отменить.`)) {
+      dispatch(deleteGateById(gate)).catch(() => {})
     }
+  }
+
+  const handleLike = (gate) => {
+    if (!isAuth) {
+      window.alert('Войдите или зарегистрируйтесь, чтобы ставить лайки.')
+      return
+    }
+    if (isOwnerOf(gate)) {
+      window.alert('Нельзя ставить лайк своей услуге.')
+      return
+    }
+    dispatch(likeGateById(gate)).catch(() => {})
   }
 
   return (
     <div className="page-content">
       <div className="header">
         <h1 className="app-title">Плитка гейтов</h1>
+        {source === 'mock' && <div className="source-badge">демо-данные (mock)</div>}
+        {source === 'api' && <div className="source-badge source-badge-api">данные веб-сервиса</div>}
       </div>
 
       <div className="filter-section">
-        <Form onSubmit={(event) => event.preventDefault()}>
+        <Form
+          onSubmit={(event) => {
+            event.preventDefault()
+            applyFilters()
+          }}
+        >
           <Form.Group className="mb-3">
             <Form.Label>Поиск по названию</Form.Label>
             <Form.Control
               type="text"
               placeholder="Поиск по названию гейта…"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              value={form.q}
+              onChange={(event) => updateField('q', event.target.value)}
             />
           </Form.Group>
 
@@ -71,16 +123,16 @@ export default function GridPage() {
                   type="number"
                   min="0"
                   max="180"
-                  value={angleXMin}
-                  onChange={(event) => setAngleXMin(Number(event.target.value) || 0)}
+                  value={form.angleXMin}
+                  onChange={(event) => updateField('angleXMin', event.target.value)}
                 />
                 <span className="angle-range-sep">—</span>
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
-                  value={angleXMax}
-                  onChange={(event) => setAngleXMax(Number(event.target.value) || 0)}
+                  value={form.angleXMax}
+                  onChange={(event) => updateField('angleXMax', event.target.value)}
                 />
               </div>
             </Col>
@@ -92,38 +144,66 @@ export default function GridPage() {
                   type="number"
                   min="0"
                   max="180"
-                  value={angleYMin}
-                  onChange={(event) => setAngleYMin(Number(event.target.value) || 0)}
+                  value={form.angleYMin}
+                  onChange={(event) => updateField('angleYMin', event.target.value)}
                 />
                 <span className="angle-range-sep">—</span>
                 <Form.Control
                   type="number"
                   min="0"
                   max="180"
-                  value={angleYMax}
-                  onChange={(event) => setAngleYMax(Number(event.target.value) || 0)}
+                  value={form.angleYMax}
+                  onChange={(event) => updateField('angleYMax', event.target.value)}
                 />
               </div>
             </Col>
           </div>
 
-          <Button variant="primary" type="button" className="mt-3 w-100">
-            Применить
-          </Button>
+          <Form.Group className="mt-3">
+            <Form.Label>Сортировка</Form.Label>
+            <Form.Select
+              value={`${form.sortBy}:${form.sortOrder}`}
+              onChange={(event) => {
+                const [sortBy, sortOrder] = event.target.value.split(':')
+                setForm((prev) => ({ ...prev, sortBy, sortOrder }))
+              }}
+            >
+              <option value="id:asc">По умолчанию</option>
+              <option value="title:asc">По названию (А–Я)</option>
+              <option value="title:desc">По названию (Я–А)</option>
+              <option value="created_at:desc">Сначала новые</option>
+              <option value="created_at:asc">Сначала старые</option>
+            </Form.Select>
+          </Form.Group>
+
+          <div className="filter-actions">
+            <Button variant="outline-primary" type="button" onClick={resetAll} disabled={loading}>
+              Сбросить
+            </Button>
+            <Button variant="primary" type="submit" disabled={loading}>
+              Применить
+            </Button>
+          </div>
         </Form>
       </div>
 
+      {status === 'failed' && (
+        <div className="empty-msg">Не удалось загрузить услуги. Проверьте, запущен ли веб-сервис.</div>
+      )}
+
       <div className="grid">
-        {filteredGates.length === 0 ? (
+        {status !== 'failed' && gates.length === 0 && status !== 'loading' ? (
           <div className="empty-msg">Ничего не найдено. Измените условия фильтра.</div>
         ) : (
-          filteredGates.map((gate) => (
+          gates.map((gate) => (
             <GateCard
               key={gate.id}
               gate={gate}
-              isOwner={Boolean(user) && gate.creator_id === user.id}
+              isOwner={isOwnerOf(gate)}
               onOpen={() => navigate(`/feed/${gate.id}`)}
+              onDetails={() => navigate(`/gates/${gate.id}`)}
               onDelete={handleDelete}
+              onLike={handleLike}
             />
           ))
         )}

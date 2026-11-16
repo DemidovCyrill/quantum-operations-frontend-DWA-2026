@@ -1,16 +1,40 @@
 import { useState } from 'react'
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+
+import { logoutRequest } from './api/authApi'
+import LoadingOverlay, { Notice } from './components/LoadingOverlay'
 import Navbar from './components/Navbar'
+import { selectIsAuth, selectUser, clearCredentials } from './store/slices/authSlice'
+import { resetFilters } from './store/slices/filtersSlice'
+import { resetGates } from './store/slices/gatesSlice'
+import { setNotice } from './store/slices/uiSlice'
 import AddPage from './pages/AddPage'
 import FeedPage from './pages/FeedPage'
+import GateDetailsPage from './pages/GateDetailsPage'
 import GridPage from './pages/GridPage'
 import LoginPage from './pages/LoginPage'
-import { logout } from './auth'
-import { useAuth } from './hooks/useAuth'
 
 function AppHeader() {
-  const { user, isAuth } = useAuth()
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const user = useSelector(selectUser)
+  const isAuth = useSelector(selectIsAuth)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      await logoutRequest()
+    } catch {
+      // Даже если бэкенд недоступен, выходим локально.
+    }
+    dispatch(clearCredentials())
+    dispatch(resetFilters())
+    dispatch(resetGates())
+    dispatch(setNotice({ type: 'success', text: 'Вы вышли из аккаунта. Фильтры сброшены.' }))
+    navigate('/')
+  }
 
   return (
     <header className="app-header">
@@ -42,15 +66,8 @@ function AppHeader() {
                 />
                 <div className="user-menu-dropdown">
                   <div className="user-menu-fullname">Вы вошли как {user.username}</div>
-                  <button
-                    type="button"
-                    className="header-btn"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      logout()
-                    }}
-                  >
-                    Выйти
+                  <button type="button" className="header-btn" onClick={handleLogout}>
+                    Выход
                   </button>
                 </div>
               </>
@@ -77,6 +94,7 @@ function App() {
             <Route path="/" element={<GridPage />} />
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/feed/:id" element={<FeedPage />} />
+            <Route path="/gates/:id" element={<GateDetailsPage />} />
             <Route path="/add" element={<AddPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<LoginPage />} />
@@ -85,6 +103,8 @@ function App() {
         </main>
 
         <Navbar />
+        <LoadingOverlay />
+        <Notice />
       </div>
     </BrowserRouter>
   )

@@ -1,51 +1,76 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from 'react-bootstrap'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-import { useGates } from '../hooks/useGates'
-import { DEFAULT_VIDEO, isLikedBy, toggleLike } from '../store/gatesStore'
+
+import { DEFAULT_VIDEO, mediaUrl, videoUrl } from '../api/media'
+import { selectIsAuth, selectUser } from '../store/slices/authSlice'
+import { selectGates, selectGatesSource } from '../store/slices/gatesSlice'
+import { selectIsLoading } from '../store/slices/uiSlice'
+import { fetchGates, likeGateById } from '../store/thunks/gatesThunks'
+
+function GateVideo({ gate }) {
+  const videoRef = useRef(null)
+  const [src, setSrc] = useState(() => videoUrl(gate.video_url))
+
+  // Новый <video> создаётся заново (key по id услуги), поэтому браузер
+  // гарантированно загружает файл нового гейта, а не оставляет старый кадр.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.load()
+    const promise = video.play()
+    if (promise && typeof promise.catch === 'function') promise.catch(() => {})
+  }, [src, gate.id])
+
+  return (
+    <video
+      ref={videoRef}
+      className="vibes-video"
+      src={src}
+      poster={mediaUrl(gate.image_url)}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="auto"
+      onError={() => {
+        if (src !== DEFAULT_VIDEO) setSrc(DEFAULT_VIDEO)
+      }}
+    />
+  )
+}
 
 export default function FeedPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const gates = useGates()
-  const { user } = useAuth()
-  const videoRef = useRef(null)
+  const dispatch = useDispatch()
 
-  const [currentId, setCurrentId] = useState(() => (id ? Number(id) : gates[0]?.id ?? null))
+  const gates = useSelector(selectGates)
+  const source = useSelector(selectGatesSource)
+  const user = useSelector(selectUser)
+  const isAuth = useSelector(selectIsAuth)
+  const loading = useSelector(selectIsLoading)
 
-  // Переход из плитки по конкретной карточке
   useEffect(() => {
-    if (id) setCurrentId(Number(id))
-  }, [id])
+    if (!gates.length) dispatch(fetchGates())
+  }, [dispatch, gates.length])
 
-  const index = gates.findIndex((gate) => gate.id === currentId)
-  const gate = index >= 0 ? gates[index] : gates[0]
+  const routeIndex = gates.findIndex((gate) => gate.id === Number(id))
+  const index = routeIndex >= 0 ? routeIndex : 0
+  const gate = gates[index] || null
 
-  // Держим адрес страницы в соответствии с открытым гейтом
+  // Держим адрес страницы в соответствии с открытым гейтом.
   useEffect(() => {
     if (!gate) return
-    if (id !== String(gate.id)) {
-      navigate(`/feed/${gate.id}`, { replace: true })
-    }
+    if (id !== String(gate.id)) navigate(`/feed/${gate.id}`, { replace: true })
   }, [gate, id, navigate])
-
-  // Принудительно запускаем видео после смены гейта (некоторые браузеры
-  // игнорируют autoPlay у пересозданного элемента)
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    const promise = video.play()
-    if (promise && typeof promise.catch === 'function') {
-      promise.catch(() => {})
-    }
-  }, [gate?.id])
 
   if (!gate) {
     return (
       <div className="feed-page">
         <div className="empty-msg">
-          <p>Гейтов пока нет.</p>
+          <p>{loading ? 'Загружаем ленту…' : 'Гейтов пока нет.'}</p>
           <Button variant="primary" onClick={() => navigate('/add')}>
             Добавить гейт
           </Button>
@@ -54,56 +79,34 @@ export default function FeedPage() {
     )
   }
 
-  const liked = isLikedBy(gate, user?.id)
-
   const handleNext = () => {
     if (gates.length < 2) return
     const nextIndex = (index + 1) % gates.length
-    setCurrentId(gates[nextIndex].id)
+    navigate(`/feed/${gates[nextIndex].id}`)
   }
 
   const handleLike = () => {
-    if (!user) {
+    if (!isAuth) {
       window.alert('Войдите или зарегистрируйтесь, чтобы ставить лайки.')
       return
     }
-    toggleLike(gate.id, user.id)
-  }
-
-  const handleVideoError = (event) => {
-    const video = event.currentTarget
-    if (video.dataset.fallbackApplied === '1') return
-    video.dataset.fallbackApplied = '1'
-    video.src = DEFAULT_VIDEO
-    video.load()
-    video.play().catch(() => {})
+    if (Number(gate.creator_id) === Number(user.id)) {
+      window.alert('Нельзя ставить лайк своей услуге.')
+      return
+    }
+    dispatch(likeGateById(gate)).catch(() => {})
   }
 
   return (
     <div className="feed-page">
       <div className="feed-header">
         <h1 className="app-title">{gate.title}</h1>
+        {source === 'mock' && <div className="source-badge">демо-данные (mock)</div>}
       </div>
 
       <div className="feed-container">
         <div className="vibes-container">
-          {/*
-            key={gate.id} — критично: при смене гейта React создаёт новый <video>,
-            поэтому браузер гарантированно загружает новый файл, а не оставляет старый кадр.
-            src задаётся прямо на <video>, без <source> — иначе смена source не перезапускает видео.
-          */}
-          <video
-            key={gate.id}
-            ref={videoRef}
-            className="vibes-video"
-            src={gate.video_url || DEFAULT_VIDEO}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            onError={handleVideoError}
-          />
+          <GateVideo key={gate.id} gate={gate} />
 
           <div className="vibes-side">
             <div className="param-badge">
@@ -117,16 +120,16 @@ export default function FeedPage() {
 
             <button
               type="button"
-              className={`like-btn ${liked ? 'is-liked' : ''}`}
+              className={`like-btn ${gate.is_liked ? 'is-liked' : ''}`}
               onClick={handleLike}
-              title={user ? (liked ? 'Убрать лайк' : 'Поставить лайк') : 'Войдите, чтобы поставить лайк'}
-              aria-pressed={liked}
+              title={user ? (gate.is_liked ? 'Убрать лайк' : 'Поставить лайк') : 'Войдите, чтобы поставить лайк'}
+              aria-pressed={Boolean(gate.is_liked)}
             >
-              <span className="like-btn-icon">{liked ? '♥' : '♡'}</span>
+              <span className="like-btn-icon">{gate.is_liked ? '♥' : '♡'}</span>
               <span className="like-btn-count">{gate.likes_count}</span>
             </button>
 
-            <button type="button" className="next-btn" onClick={handleNext} title="Следующий гейт">
+            <button type="button" className="next-btn" onClick={handleNext} title="Следующий гейт" disabled={gates.length < 2}>
               ▶
             </button>
           </div>
@@ -140,12 +143,15 @@ export default function FeedPage() {
               <span className="less-link">Меньше</span>
             </label>
             <div className="feed-author">Автор: {gate.creator_name}</div>
+            <button type="button" className="details-link details-link-light" onClick={() => navigate(`/gates/${gate.id}`)}>
+              Подробнее об услуге →
+            </button>
           </div>
         </div>
       </div>
 
       <div className="feed-actions">
-        <Button variant="primary" className="w-100" onClick={handleNext}>
+        <Button variant="primary" className="w-100" onClick={handleNext} disabled={gates.length < 2}>
           Следующий гейт
         </Button>
       </div>

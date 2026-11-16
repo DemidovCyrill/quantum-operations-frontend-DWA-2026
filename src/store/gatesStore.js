@@ -15,6 +15,13 @@ const SEED_GATES = [
     creator_id: 1,
     creator_name: 'Admin',
     likes_count: 0,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Однокубитовый' },
+      { id: 2, name: 'Матрица', value: '[[0, 1], [1, 0]]' },
+      { id: 3, name: 'Ось поворота', value: 'X' },
+      { id: 4, name: 'Угол поворота', value: '180°' },
+      { id: 5, name: 'Обратимость', value: 'Да' },
+    ],
   },
   {
     id: 2,
@@ -27,6 +34,13 @@ const SEED_GATES = [
     creator_id: 2,
     creator_name: 'user1',
     likes_count: 5,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Однокубитовый' },
+      { id: 2, name: 'Матрица', value: '[[0, -i], [i, 0]]' },
+      { id: 3, name: 'Ось поворота', value: 'Y' },
+      { id: 4, name: 'Угол поворота', value: '180°' },
+      { id: 5, name: 'Обратимость', value: 'Да' },
+    ],
   },
   {
     id: 3,
@@ -39,6 +53,13 @@ const SEED_GATES = [
     creator_id: 1,
     creator_name: 'Admin',
     likes_count: 12,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Однокубитовый' },
+      { id: 2, name: 'Матрица', value: '[[1, 0], [0, -1]]' },
+      { id: 3, name: 'Ось поворота', value: 'Z' },
+      { id: 4, name: 'Угол поворота', value: '180°' },
+      { id: 5, name: 'Фаза', value: 'π' },
+    ],
   },
   {
     id: 4,
@@ -51,6 +72,12 @@ const SEED_GATES = [
     creator_id: 1,
     creator_name: 'Admin',
     likes_count: 8,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Однокубитовый' },
+      { id: 2, name: 'Матрица', value: '1/√2 · [[1, 1], [1, -1]]' },
+      { id: 3, name: 'Создаёт суперпозицию', value: 'Да' },
+      { id: 4, name: 'Обратимость', value: 'Да' },
+    ],
   },
   {
     id: 5,
@@ -63,6 +90,12 @@ const SEED_GATES = [
     creator_id: 2,
     creator_name: 'user1',
     likes_count: 3,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Однокубитовый' },
+      { id: 2, name: 'Матрица', value: '[[1, 0], [0, i]]' },
+      { id: 3, name: 'Фазовый сдвиг', value: '90°' },
+      { id: 4, name: 'Обратимость', value: 'Да' },
+    ],
   },
   {
     id: 6,
@@ -75,6 +108,12 @@ const SEED_GATES = [
     creator_id: 1,
     creator_name: 'Admin',
     likes_count: 15,
+    attributes: [
+      { id: 1, name: 'Тип вентиля', value: 'Двукубитовый' },
+      { id: 2, name: 'Матрица', value: '[[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]' },
+      { id: 3, name: 'Управляемый', value: 'Да' },
+      { id: 4, name: 'Обратимость', value: 'Да' },
+    ],
   },
 ]
 
@@ -96,6 +135,15 @@ function normalize(gate) {
     creator_name: String(gate.creator_name || 'Admin'),
     likes_count: Math.max(0, toNumber(gate.likes_count, 0)),
     liked_by: Array.isArray(gate.liked_by) ? gate.liked_by.map((id) => toNumber(id, 0)).filter(Boolean) : [],
+    attributes: Array.isArray(gate.attributes)
+      ? gate.attributes
+          .filter((item) => item && item.name)
+          .map((item, index) => ({
+            id: toNumber(item.id, index + 1),
+            name: String(item.name),
+            value: String(item.value ?? ''),
+          }))
+      : [],
   }
 }
 
