@@ -80,7 +80,8 @@
 
 ```bash
 # в папке quantum-operations-backend-DWA-2026
-docker compose up -d postgres redis
+docker compose up -d postgres
+# Redis: служба Memurai на порту 6380 (или docker compose --profile docker-redis up -d redis)
 alembic upgrade head
 uvicorn main:app --reload
 
