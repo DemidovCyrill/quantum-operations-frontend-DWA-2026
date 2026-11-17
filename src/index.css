@@ -373,6 +373,26 @@ body {
   color: #666;
 }
 
+.form-select {
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background-color: #0f0f0f;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.form-select:focus {
+  border-color: var(--teal);
+  background-color: #0f0f0f;
+  color: var(--text);
+  box-shadow: none;
+}
+
+.form-select option {
+  background: #0f0f0f;
+  color: var(--text);
+}
+
 .form-control[readonly] {
   background: #141414;
   color: #bbb;
